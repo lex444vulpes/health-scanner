@@ -1,1 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Сканер штрихкодов</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #fff;
+               font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+  #status { text-align: center; padding: 14px 10px; font-size: 16px; }
+  #reader { width: 100%; }
+  #reader video { object-fit: cover; }
+</style>
+</head>
+<body>
+<div id="status">Наведите камеру на штрихкод продукта</div>
+<div id="reader"></div>
+<script>
+  // This page is NOT the bot's backend -- it has none. It only decodes a
+  // barcode from the live camera feed in-browser and hands the raw digits
+  // back to the bot via Telegram's own WebApp bridge (sendData), exactly as
+  // if the user had typed that barcode as a text message. The bot (and
+  // Open Food Facts lookup) do all the real work on the other end.
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+  tg.expand();
 
+  const statusEl = document.getElementById("status");
+  let sent = false;
+
+  function onScanSuccess(decodedText) {
+    if (sent) return;
+    sent = true;
+    statusEl.textContent = "Найдено: " + decodedText;
+    tg.sendData(decodedText);
+    setTimeout(() => tg.close(), 300);
+  }
+
+  const scanner = new Html5Qrcode("reader");
+  const scanConfig = {
+    fps: 10,
+    qrbox: { width: 280, height: 140 },
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128,
+    ],
+  };
+
+  Html5Qrcode.getCameras()
+    .then((cameras) => {
+      if (!cameras || !cameras.length) {
+        statusEl.textContent = "Камера не найдена";
+        return;
+      }
+      const backCamera =
+        cameras.find((c) => /back|rear|environment/i.test(c.label)) ||
+        cameras[cameras.length - 1];
+      scanner
+        .start(backCamera.id, scanConfig, onScanSuccess)
+        .catch((err) => {
+          statusEl.textContent = "Нет доступа к камере: " + err;
+        });
+    })
+    .catch((err) => {
+      statusEl.textContent = "Нет доступа к камере: " + err;
+    });
+</script>
+</body>
+</html>
