@@ -67,8 +67,20 @@
       const backCamera =
         cameras.find((c) => /back|rear|environment/i.test(c.label)) ||
         cameras[cameras.length - 1];
+      // Passing just the camera id defaults to a low/arbitrary resolution
+      // with no focus hint -- barcodes need continuous autofocus and a
+      // reasonably sharp feed up close, so ask for both explicitly. Browser
+      // support for "focusMode" varies (mainly Chrome/Android; iOS Safari's
+      // support is limited), so this is best-effort, not a guarantee.
+      const cameraConfig = {
+        deviceId: { exact: backCamera.id },
+        focusMode: "continuous",
+        advanced: [{ focusMode: "continuous" }],
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      };
       scanner
-        .start(backCamera.id, scanConfig, onScanSuccess)
+        .start(cameraConfig, scanConfig, onScanSuccess)
         .catch((err) => {
           statusEl.textContent = "Нет доступа к камере: " + err;
         });
