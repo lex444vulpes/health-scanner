@@ -70,23 +70,32 @@
     },
   };
 
-  // Pinning a specific deviceId (via getCameras()/enumerateDevices()) broke
-  // in Telegram's in-app WebView: device ids/labels often come back empty
-  // until camera permission has already been granted once for this exact
-  // page -- a chicken-and-egg deviceId mismatch that failed with "no camera
-  // access" on the very first run. facingMode lets the browser pick the
-  // right physical camera itself, no enumeration/id needed. This object
-  // must have exactly one key -- see the videoConstraints note above.
-  // A bare string ("environment") is only a hint -- some WebViews (this one
-  // included, per live test) ignore it and default to the front camera.
-  // {exact: "environment"} forces the back camera; phones always have one,
-  // so this is safe to require outright.
-  const cameraConfig = { facingMode: { exact: "environment" } };
-  scanner
-    .start(cameraConfig, scanConfig, onScanSuccess)
-    .catch((err) => {
+  // facingMode (bare string or {exact:...}) is just ignored by Telegram's
+  // in-app WebView on iOS -- confirmed by live test, it kept opening the
+  // front camera regardless. The only thing that actually works there is
+  // picking a specific deviceId by label. getCameras() used to return empty
+  // labels on the very first run (before camera permission existed for this
+  // origin) -- but by the time this page runs again, that permission has
+  // already been granted once, so labels are populated now. Fall back to
+  // facingMode only if enumeration genuinely fails.
+  async function startScanner() {
+    let cameraIdOrConfig = { facingMode: { exact: "environment" } };
+    try {
+      const cameras = await Html5Qrcode.getCameras();
+      if (cameras && cameras.length) {
+        const back = cameras.find((c) => /back|rear|environment|задн/i.test(c.label || ""));
+        cameraIdOrConfig = (back || cameras[cameras.length - 1]).id;
+      }
+    } catch (e) {
+      // enumeration failed -- keep the facingMode fallback above
+    }
+    try {
+      await scanner.start(cameraIdOrConfig, scanConfig, onScanSuccess);
+    } catch (err) {
       statusEl.textContent = "Нет доступа к камере: " + err;
-    });
+    }
+  }
+  startScanner();
 </script>
 </body>
 </html>
