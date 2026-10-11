@@ -41,13 +41,20 @@
   const scanner = new Html5Qrcode("reader");
   const scanConfig = {
     fps: 10,
-    qrbox: { width: 280, height: 140 },
+    // A fixed box was too small/too wide-only for square QR codes -- scale
+    // the viewfinder to most of the actual camera preview instead, so both
+    // square QR codes and long rectangular barcodes fit comfortably.
+    qrbox: (viewfinderWidth, viewfinderHeight) => {
+      const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.85);
+      return { width: size, height: size };
+    },
     formatsToSupport: [
       Html5QrcodeSupportedFormats.EAN_13,
       Html5QrcodeSupportedFormats.EAN_8,
       Html5QrcodeSupportedFormats.UPC_A,
       Html5QrcodeSupportedFormats.UPC_E,
       Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.QR_CODE,
     ],
   };
 
