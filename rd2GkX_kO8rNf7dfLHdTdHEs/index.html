@@ -56,35 +56,30 @@
       Html5QrcodeSupportedFormats.CODE_128,
       Html5QrcodeSupportedFormats.QR_CODE,
     ],
+    // Focus/resolution hints go here, NOT in the first start() argument --
+    // html5-qrcode requires that first argument to have exactly one key
+    // when passed as an object (it failed with "'cameraIdOrConfig' object
+    // should have exactly 1 key ... found 5 keys" when they were bundled
+    // together). videoConstraints is the library's dedicated slot for extra
+    // MediaTrackConstraints like these.
+    videoConstraints: {
+      focusMode: "continuous",
+      advanced: [{ focusMode: "continuous" }],
+      width: { ideal: 1920 },
+      height: { ideal: 1080 },
+    },
   };
 
-  Html5Qrcode.getCameras()
-    .then((cameras) => {
-      if (!cameras || !cameras.length) {
-        statusEl.textContent = "Камера не найдена";
-        return;
-      }
-      const backCamera =
-        cameras.find((c) => /back|rear|environment/i.test(c.label)) ||
-        cameras[cameras.length - 1];
-      // Passing just the camera id defaults to a low/arbitrary resolution
-      // with no focus hint -- barcodes need continuous autofocus and a
-      // reasonably sharp feed up close, so ask for both explicitly. Browser
-      // support for "focusMode" varies (mainly Chrome/Android; iOS Safari's
-      // support is limited), so this is best-effort, not a guarantee.
-      const cameraConfig = {
-        deviceId: { exact: backCamera.id },
-        focusMode: "continuous",
-        advanced: [{ focusMode: "continuous" }],
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-      };
-      scanner
-        .start(cameraConfig, scanConfig, onScanSuccess)
-        .catch((err) => {
-          statusEl.textContent = "Нет доступа к камере: " + err;
-        });
-    })
+  // Pinning a specific deviceId (via getCameras()/enumerateDevices()) broke
+  // in Telegram's in-app WebView: device ids/labels often come back empty
+  // until camera permission has already been granted once for this exact
+  // page -- a chicken-and-egg deviceId mismatch that failed with "no camera
+  // access" on the very first run. facingMode lets the browser pick the
+  // right physical camera itself, no enumeration/id needed. This object
+  // must have exactly one key -- see the videoConstraints note above.
+  const cameraConfig = { facingMode: "environment" };
+  scanner
+    .start(cameraConfig, scanConfig, onScanSuccess)
     .catch((err) => {
       statusEl.textContent = "Нет доступа к камере: " + err;
     });
