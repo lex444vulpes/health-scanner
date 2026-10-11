@@ -77,7 +77,11 @@
   // access" on the very first run. facingMode lets the browser pick the
   // right physical camera itself, no enumeration/id needed. This object
   // must have exactly one key -- see the videoConstraints note above.
-  const cameraConfig = { facingMode: "environment" };
+  // A bare string ("environment") is only a hint -- some WebViews (this one
+  // included, per live test) ignore it and default to the front camera.
+  // {exact: "environment"} forces the back camera; phones always have one,
+  // so this is safe to require outright.
+  const cameraConfig = { facingMode: { exact: "environment" } };
   scanner
     .start(cameraConfig, scanConfig, onScanSuccess)
     .catch((err) => {
